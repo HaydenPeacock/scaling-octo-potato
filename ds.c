@@ -14,8 +14,22 @@
  * - Return the new node
  */
 Node *create_question_node(const char *question) {
-    // TODO: Implement this function
-    return NULL;
+	//Allocate memory for a Node structure
+    Node* qNode = (Node*) malloc(sizeof(Node));
+
+    //Use strdup() to copy the question string (heap allocation)
+    char* dupeQ = strdup(question);
+    qNode->text = dupeQ;
+
+    //Set isQuestion to 1
+    qNode->isQuestion = 1;
+
+    //Initialize yes and no pointers to NULL
+    qNode->yes = NULL;
+    qNode->no = NULL;
+
+	//Return the new node
+    return qNode;
 }
 
 /* TODO 2: Implement create_animal_node
@@ -23,8 +37,14 @@ Node *create_question_node(const char *question) {
  * - This represents a leaf node with an animal name
  */
 Node *create_animal_node(const char *animal) {
-    // TODO: Implement this function
-    return NULL;
+    //Similiar to create_question_node but set isQuestion to 0
+    Node* aNode = (Node*) malloc(sizeof(Node));
+    char* dupeA = strdup(animal);
+    aNode->text = dupeA;
+    aNode->isQuestion = 0;
+    aNode->yes = NULL;
+    aNode->no = NULL;
+    return aNode;
 }
 
 /* TODO 3: Implement free_tree (recursive)
@@ -37,7 +57,23 @@ Node *create_animal_node(const char *animal) {
  * IMPORTANT: Free children before freeing the parent!
  */
 void free_tree(Node *node) {
-    // TODO: Implement this function
+    //Base case: if node is NULL, return
+    if(node == NULL){
+	return;
+    }
+
+    //Recursively free left subtree (yes)
+    free_tree(node->yes);
+
+    //Recursively free right subtree (no)
+    free_tree(node->no);
+
+    //Free the text string
+    free(node->text);
+
+    //Free the node itself
+    free(node);
+    return;
 }
 
 /* TODO 4: Implement count_nodes (recursive)
@@ -45,8 +81,13 @@ void free_tree(Node *node) {
  * - Return 1 + count of left subtree + count of right subtree
  */
 int count_nodes(Node *root) {
-    // TODO: Implement this function
-    return 0;
+    //Base case: if root is NULL, return 0
+    if(root == NULL){
+	    return 0;
+    }
+
+    //Return 1 + count of left subtree + count of right subtree
+    return 1 + count_nodes(root->yes) + count_nodes(root->no);
 }
 
 /* ========== Frame Stack (for iterative tree traversal) ========== */
