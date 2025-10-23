@@ -98,7 +98,14 @@ int count_nodes(Node *root) {
  * - Set capacity to 16
  */
 void fs_init(FrameStack *s) {
-    // TODO: Implement this function
+	//Allocate initial array of frames (start with capacity 16)
+    s->frames = (Frame*) malloc(sizeof(Frame) * 16);
+
+    //Set size to 0
+    s->size = 0;
+
+    //Set capacity to 16
+    s->capacity = 16;
 }
 
 /* TODO 6: Implement fs_push
@@ -108,7 +115,19 @@ void fs_init(FrameStack *s) {
  * - Increment size
  */
 void fs_push(FrameStack *s, Node *node, int answeredYes) {
-    // TODO: Implement this function
+    //Check if size >= capacity and realloc if so
+    if(s->size >= s->capacity){
+	    s->capacity = s->capacity*2;
+	    s->frames = (Frame*) realloc(s->frames, s->capacity * sizeof(Frame));
+    }
+
+    //Store the node and answeredYes in frames[size]
+    s->frames[s->size].node = node;
+    s->frames[s->size].answeredYes = answeredYes;
+
+    //Increment size
+    s->size = s->size + 1;
+    return;
 }
 
 /* TODO 7: Implement fs_pop
@@ -117,17 +136,24 @@ void fs_push(FrameStack *s, Node *node, int answeredYes) {
  * Note: No need to check if empty - caller should use fs_empty() first
  */
 Frame fs_pop(FrameStack *s) {
-    Frame dummy = {NULL, -1};
-    // TODO: Implement this function
-    return dummy;
+    //Frame dummy = {NULL, -1};
+    //Decerement size
+    s->size = s->size - 1;
+
+    //Return the frame at frames[size] 
+    return s->frames[s->size];
 }
 
 /* TODO 8: Implement fs_empty
  * - Return 1 if size == 0, otherwise return 0
  */
 int fs_empty(FrameStack *s) {
-    // TODO: Implement this function
-    return 1;
+	//return 1 if size == 0	
+    if(s->size == 0){
+	    return 1;
+    }
+    //return 0 otherwise
+    return 0;
 }
 
 /* TODO 9: Implement fs_free
@@ -136,7 +162,16 @@ int fs_empty(FrameStack *s) {
  * - Reset size and capacity to 0
  */
 void fs_free(FrameStack *s) {
-    // TODO: Implement this function
+	//Free the frames array
+	free(s->frames);
+	
+	//Set frames pointer to NULL
+	s->frames = NULL;
+
+	//Reset size and capacity to 0
+	s->size = 0;
+	s->capacity = 0;
+	return;
 }
 
 /* ========== Edit Stack (for undo/redo) ========== */
