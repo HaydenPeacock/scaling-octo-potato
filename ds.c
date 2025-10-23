@@ -18,7 +18,7 @@ Node *create_question_node(const char *question) {
     Node* qNode = (Node*) malloc(sizeof(Node));
 
     //Use strdup() to copy the question string (heap allocation)
-    char* dupeQ = strdup(question);
+    char* dupeQ = (char*) strdup(question);
     qNode->text = dupeQ;
 
     //Set isQuestion to 1
@@ -39,7 +39,7 @@ Node *create_question_node(const char *question) {
 Node *create_animal_node(const char *animal) {
     //Similiar to create_question_node but set isQuestion to 0
     Node* aNode = (Node*) malloc(sizeof(Node));
-    char* dupeA = strdup(animal);
+    char* dupeA = (char*) strdup(animal);
     aNode->text = dupeA;
     aNode->isQuestion = 0;
     aNode->yes = NULL;
@@ -180,7 +180,14 @@ void fs_free(FrameStack *s) {
  * Similar to fs_init but for Edit structs
  */
 void es_init(EditStack *s) {
-    // TODO: Implement this function
+           //Allocate initial array of Edits (start with capacity 16)
+    s->edits = (Edit*) malloc(sizeof(Edit) * 16);
+
+    //Set size to 0
+    s->size = 0;
+
+    //Set capacity to 16
+    s->capacity = 16;  
 }
 
 /* TODO 11: Implement es_push
@@ -189,24 +196,41 @@ void es_init(EditStack *s) {
  * - Add edit to array and increment size
  */
 void es_push(EditStack *s, Edit e) {
-    // TODO: Implement this function
+   //Check if size >= capacity and realloc if so
+    if(s->size >= s->capacity){
+            s->capacity = s->capacity*2;
+            s->edits = (Edit*) realloc(s->edits, s->capacity * sizeof(Edit));
+    }
+
+    //Store the edit in edits[s->size]
+    s->edits[s->size] = e;
+
+    //Increment size
+    s->size = s->size + 1;
+    return; 
 }
 
 /* TODO 12: Implement es_pop
  * Similar to fs_pop but for Edit structs
  */
 Edit es_pop(EditStack *s) {
-    Edit dummy = {0};
-    // TODO: Implement this function
-    return dummy;
+    //Edit dummy = {0};
+    //Decerement size
+    s->size = s->size - 1;
+
+    //Return the edit at edits[s->size]
+    return s->edits[s->size];
 }
 
 /* TODO 13: Implement es_empty
  * Return 1 if size == 0, otherwise 0
  */
 int es_empty(EditStack *s) {
-    // TODO: Implement this function
-    return 1;
+    //return 1 if size == 0, otherwise 0
+    if(s->size == 0){
+	    return 1;
+    }
+    return 0;
 }
 
 /* TODO 14: Implement es_clear
@@ -214,7 +238,9 @@ int es_empty(EditStack *s) {
  * - This is used to clear the redo stack when a new edit is made
  */
 void es_clear(EditStack *s) {
-    // TODO: Implement this function
+    //set size to 0 (don't free memory just reset)
+    s->size = 0;
+    return;
 }
 
 void es_free(EditStack *s) {
@@ -235,7 +261,12 @@ void free_edit_stack(EditStack *s) {
  * - Set size to 0
  */
 void q_init(Queue *q) {
-    // TODO: Implement this function
+    //set front and rear to NULL
+    q->front = NULL;
+    q->rear = NULL;
+    
+    //set size to 0
+    q->size = 0;
 }
 
 /* TODO 16: Implement q_enqueue
@@ -250,7 +281,34 @@ void q_init(Queue *q) {
  * - Increment size
  */
 void q_enqueue(Queue *q, Node *node, int id) {
-    // TODO: Implement this function
+    //Allocate a new QueueNode
+    QueueNode* newQn = (QueueNode*) malloc(sizeof(QueueNode));
+
+    //Set its treeNode and id fields
+    newQn->treeNode = node;
+    newQn->id = id;
+
+    //Set its nex pointer to NULL
+    newQn->next = NULL;
+
+    //If queue is empty set both front and rear to the new node
+    if(q_empty(q)){
+	    q->front = newQn;
+	    q->rear = newQn;
+    }
+    
+    //else link rear->next to the new node
+    //update rear to point to the new node
+    else{
+	   q->rear->next = newQn;
+	   q->rear = newQn;
+    }
+
+    //Increment size
+    q->size = q->size + 1;
+
+    return;
+
 }
 
 /* TODO 17: Implement q_dequeue
@@ -264,16 +322,45 @@ void q_enqueue(Queue *q, Node *node, int id) {
  * - Return 1
  */
 int q_dequeue(Queue *q, Node **node, int *id) {
-    // TODO: Implement this function
-    return 0;
+    //if queue is empty, return 0
+    if(q_empty(q)){
+	    return 0;
+    }
+
+    //Save the front node's data to output parameters
+    *node = q->front->treeNode;
+    *id = q->front->id;
+
+    //Save front in a temp variable
+    QueueNode* temp = q->front;
+
+    //move front to front->next
+    q->front = q->front->next;
+
+    //if front is now NULL, set rear to NULL too;
+    if(q->front == NULL){
+	    q->rear = NULL;
+    }
+
+    //free the temp node
+    free(temp);
+
+    //decrement size
+    q->size = q->size - 1;
+
+    //return 1
+    return 1;
 }
 
 /* TODO 18: Implement q_empty
  * Return 1 if size == 0, otherwise 0
  */
-int q_empty(Queue *q) {
-    // TODO: Implement this function
-    return 1;
+int q_empty(Queue *q){
+	//return 1 if size == 0, otherwise 0
+    if (q->size == 0){
+	    return 1;
+    }
+    return 0;
 }
 
 /* TODO 19: Implement q_free
@@ -281,7 +368,13 @@ int q_empty(Queue *q) {
  * - Use a loop with q_dequeue until queue is empty
  */
 void q_free(Queue *q) {
-    // TODO: Implement this function
+    //Dequeue all remaining nodes (use a loop with q_dequeue until queue is empty)
+    int id;
+    Node* node;
+    while(q_dequeue(q, &node, &id)){
+	    free(node);
+    }
+    return;
 }
 
 /* ========== Hash Table ========== */
