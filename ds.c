@@ -452,13 +452,13 @@ char *canonicalize(const char *s) {
  */
 unsigned h_hash(const char *s) {
     //unsigned hash = 5381
-    unsigned hash = 5381;
+    unsigned hash = 5381u;
     
     //iterate through string and do hash function
     int i;
-    int len = strlen(s);
+    int len = (int)strlen(s);
     for(i=0;i<len;i++){
-	    hash = ((hash << 5) + hash) + s[i];
+	    hash = ((hash << 5) + hash) + (unsigned char)s[i];
     }
 
     //return hash
@@ -472,13 +472,14 @@ unsigned h_hash(const char *s) {
  */
 void h_init(Hash *h, int nbuckets) {
     //allocate buckets array using calloc
-    h->buckets = (Entry**) calloc(nbuckets, sizeof(Entry*));
+    h->buckets = (Entry**) calloc((size_t)nbuckets, sizeof(Entry*));
 
     //set nbuckets field
     h->nbuckets = nbuckets;
 
     //set size to 0
     h->size = 0;
+    return;
 }
 
 /* TODO 23: Implement h_put
@@ -501,11 +502,11 @@ void h_init(Hash *h, int nbuckets) {
  */
 int h_put(Hash *h, const char *key, int animalId) {
     //compute bucket idx
-    int idx = h_hash(key) % h->nbuckets;
+    int idx = (int)(h_hash(key) % (unsigned)h->nbuckets);
 
     //Search the chain at buckets[idx] for an entry with matching key
     Entry* temp = h->buckets[idx];
-    while(temp->next){
+    while(temp){
 	    //if found:
 	    if (!strcmp(key,temp->key)){
 		    //check if animalID already exists in the vals list
@@ -523,6 +524,7 @@ int h_put(Hash *h, const char *key, int animalId) {
 		    }
 		    temp->vals.ids[temp->vals.count] = animalId;
 		    temp->vals.count = temp->vals.count + 1;
+		    return 1;
 	    }
 	    temp = temp->next;
     }
@@ -533,13 +535,15 @@ int h_put(Hash *h, const char *key, int animalId) {
 
     //Initialize vals with initial capacity (e.g., 4)
     new->vals.capacity = 4;
+    new->vals.count =0;
     new->vals.ids = (int*) malloc(new->vals.capacity * sizeof(int));
 
     //Add animalId as first element
     new->vals.ids[0] = animalId;
+    new->vals.count = new->vals.count + 1;
 
     //Insert at head of chain (buckets[idx])
-    h->buckets[idx]->next = new->next;
+    new->next = h->buckets[idx]->next;
     h->buckets[idx] = new;
 
     //Increment h->size
@@ -560,11 +564,11 @@ int h_put(Hash *h, const char *key, int animalId) {
  */
 int h_contains(const Hash *h, const char *key, int animalId) {
     //compute bucket index
-    int idx = h_hash(key) % h->nbuckets;
+    int idx = (int)(h_hash(key) % (unsigned)h->nbuckets);
 
     //search the chain for matching key
     Entry* temp = h->buckets[idx];
-    while(temp->next){
+    while(temp){
 	if(!strcmp(key, temp->key)){
 		//if found search vals.ids array for animalId
 		int j;
@@ -574,6 +578,7 @@ int h_contains(const Hash *h, const char *key, int animalId) {
                                return 1;
                 	}
                 }
+		return 0;
 	}
 	temp = temp->next;
     }
@@ -598,10 +603,10 @@ int h_contains(const Hash *h, const char *key, int animalId) {
  */
 int *h_get_ids(const Hash *h, const char *key, int *outCount) {
     //compute bucket index
-    int idx = h_hash(key) % h->nbuckets;
+    int idx = (int)(h_hash(key) % (unsigned)h->nbuckets);
     //search chain for matching key
     Entry* temp = h->buckets[idx];
-    while(temp->next){
+    while(temp){
 	    if(!strcmp(key, temp->key)){
 		    //if found
 		    //set *outCount = vals.count
@@ -637,20 +642,23 @@ void h_free(Hash *h) {
     for(i = 0; i < h->nbuckets; i++){
 	    //Traverse the chain
 	    //for each entry
-	    while(h->buckets[i]){
+	    Entry* temp = h->buckets[i];
+	    while(temp){
+		    Entry* next = temp->next;
 		    //free the key string
-		    free(h->buckets[i]->key);
+		    free(temp->key);
 		    //free the vals.id array
-		    free(h->buckets[i]->vals.ids);
+		    free(temp->vals.ids);
 		    //free the entry itself
-		    Entry* temp = h->buckets[i]->next;
-		    free(h->buckets[i]);
-		    h->buckets[i] = temp;
+		    free(temp);
+		    temp = next;
 	    }
+	    h->buckets[i] = NULL;
     }
     //free the buckets array
     free(h->buckets);
     //set buckets to NULL, size to 0
     h->buckets = NULL;
     h->size = 0;
+    h->nbuckets = 0;
 }
