@@ -398,8 +398,50 @@ void q_free(Queue *q) {
  * - Return the new string
  */
 char *canonicalize(const char *s) {
-    // TODO: Implement this function
-    return NULL;
+    //allocate result buffer (strlen(s) + 1)
+    int length = strlen(s);
+    char* result = (char*) malloc(length+1);
+    
+    //iterate through input string
+    int i = 0;
+    int j = 0;
+    while(s[i]){
+	    //uppercase case
+	    if(s[i] >= 'A' && s[i] <= 'Z'){
+		    result[j] = tolower(s[i]);
+		    i++;
+		    j++;
+		    continue;
+	    }
+
+	    //lowercase or number case
+	    if((s[i] >= 'a' && s[i] <= 'z') || (s[i] >= '0' && s[i] <= '9')){
+		    result[j] = s[i];
+		    i++;
+		    j++;
+		    continue;
+	    }
+
+	    //whitespace case
+	    if(s[i] == ' '){
+		    result[j] = '_';
+		    i++;
+		    j++;
+		    continue;
+	    }
+
+	    //otherwise
+	    else{
+		    i++;
+		    continue;
+	    }
+    }
+
+    //null terminate result
+    result[j] = 0;
+
+    //return the new string
+    return result;
 }
 
 /* TODO 21: Implement h_hash (djb2 algorithm)
@@ -409,8 +451,18 @@ char *canonicalize(const char *s) {
  * Return hash
  */
 unsigned h_hash(const char *s) {
-    // TODO: Implement this function
-    return 0;
+    //unsigned hash = 5381
+    unsigned hash = 5381;
+    
+    //iterate through string and do hash function
+    int i;
+    int len = strlen(s);
+    for(i=0;i<len;i++){
+	    hash = ((hash << 5) + hash) + s[i];
+    }
+
+    //return hash
+    return hash;
 }
 
 /* TODO 22: Implement h_init
@@ -419,7 +471,14 @@ unsigned h_hash(const char *s) {
  * - Set size to 0
  */
 void h_init(Hash *h, int nbuckets) {
-    // TODO: Implement this function
+    //allocate buckets array using calloc
+    h->buckets = (Entry**) calloc(nbuckets, sizeof(Entry*));
+
+    //set nbuckets field
+    h->nbuckets = nbuckets;
+
+    //set size to 0
+    h->size = 0;
 }
 
 /* TODO 23: Implement h_put
@@ -441,8 +500,53 @@ void h_init(Hash *h, int nbuckets) {
  *    - Return 1
  */
 int h_put(Hash *h, const char *key, int animalId) {
-    // TODO: Implement this function
-    return 0;
+    //compute bucket idx
+    int idx = h_hash(key) % h->nbuckets;
+
+    //Search the chain at buckets[idx] for an entry with matching key
+    Entry* temp = h->buckets[idx];
+    while(temp->next){
+	    //if found:
+	    if (!strcmp(key,temp->key)){
+		    //check if animalID already exists in the vals list
+		    int j;
+		    for(j = 0;j < temp->vals.count;j++){
+			    if(animalId == temp->vals.ids[j]){
+				    //if yes, return 0 (no change)
+				    return 0;
+			    }
+		    }
+		    //If no, add animalId to vals.ids array (resize if needed), return 1
+		    if(temp->vals.count >= temp->vals.capacity){
+			    temp->vals.capacity = temp->vals.capacity * 2;
+			    temp->vals.ids = (int*) realloc(temp->vals.ids, sizeof(int) * temp->vals.capacity);
+		    }
+		    temp->vals.ids[temp->vals.count] = animalId;
+		    temp->vals.count = temp->vals.count + 1;
+	    }
+	    temp = temp->next;
+    }
+    //if not found
+    //Create new Entry with strdup(key)
+    Entry* new = (Entry*) malloc(sizeof(Entry));
+    new->key = strdup(key);
+
+    //Initialize vals with initial capacity (e.g., 4)
+    new->vals.capacity = 4;
+    new->vals.ids = (int*) malloc(new->vals.capacity * sizeof(int));
+
+    //Add animalId as first element
+    new->vals.ids[0] = animalId;
+
+    //Insert at head of chain (buckets[idx])
+    h->buckets[idx]->next = new->next;
+    h->buckets[idx] = new;
+
+    //Increment h->size
+    h->size = h->size + 1;
+
+   //return 1 
+    return 1;
 }
 
 /* TODO 24: Implement h_contains
@@ -455,7 +559,25 @@ int h_put(Hash *h, const char *key, int animalId) {
  * 4. Return 1 if found, 0 otherwise
  */
 int h_contains(const Hash *h, const char *key, int animalId) {
-    // TODO: Implement this function
+    //compute bucket index
+    int idx = h_hash(key) % h->nbuckets;
+
+    //search the chain for matching key
+    Entry* temp = h->buckets[idx];
+    while(temp->next){
+	if(!strcmp(key, temp->key)){
+		//if found search vals.ids array for animalId
+		int j;
+		for(j = 0;j < temp->vals.count;j++){
+                        if(animalId == temp->vals.ids[j]){
+                               //if found return 1
+                               return 1;
+                	}
+                }
+	}
+	temp = temp->next;
+    }
+    //return 0 otherwise
     return 0;
 }
 
@@ -475,8 +597,24 @@ int h_contains(const Hash *h, const char *key, int animalId) {
  *    - Return NULL
  */
 int *h_get_ids(const Hash *h, const char *key, int *outCount) {
-    // TODO: Implement this function
+    //compute bucket index
+    int idx = h_hash(key) % h->nbuckets;
+    //search chain for matching key
+    Entry* temp = h->buckets[idx];
+    while(temp->next){
+	    if(!strcmp(key, temp->key)){
+		    //if found
+		    //set *outCount = vals.count
+		    *outCount = temp->vals.count;
+		    //return vals.ids
+		    return temp->vals.ids;
+	    }
+	    temp = temp->next;
+    }
+    //if not found
+    //set *outCount = 0
     *outCount = 0;
+    //return NULL
     return NULL;
 }
 
@@ -494,5 +632,25 @@ int *h_get_ids(const Hash *h, const char *key, int *outCount) {
  * - Set buckets to NULL, size to 0
  */
 void h_free(Hash *h) {
-    // TODO: Implement this function
+    //for each bucket
+    int i;
+    for(i = 0; i < h->nbuckets; i++){
+	    //Traverse the chain
+	    //for each entry
+	    while(h->buckets[i]){
+		    //free the key string
+		    free(h->buckets[i]->key);
+		    //free the vals.id array
+		    free(h->buckets[i]->vals.ids);
+		    //free the entry itself
+		    Entry* temp = h->buckets[i]->next;
+		    free(h->buckets[i]);
+		    h->buckets[i] = temp;
+	    }
+    }
+    //free the buckets array
+    free(h->buckets);
+    //set buckets to NULL, size to 0
+    h->buckets = NULL;
+    h->size = 0;
 }
