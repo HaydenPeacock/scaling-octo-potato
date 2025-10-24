@@ -372,7 +372,6 @@ void q_free(Queue *q) {
     int id;
     Node* node;
     while(q_dequeue(q, &node, &id)){
-	    free(node);
     }
     return;
 }
@@ -543,7 +542,7 @@ int h_put(Hash *h, const char *key, int animalId) {
     new->vals.count = new->vals.count + 1;
 
     //Insert at head of chain (buckets[idx])
-    new->next = h->buckets[idx]->next;
+    new->next = h->buckets[idx];
     h->buckets[idx] = new;
 
     //Increment h->size
