@@ -75,36 +75,33 @@ void play_game() {
 
     //While stack not empty:
     int userAnswer = 0;
-    Frame* cur;
+    Frame cur;
     while(!(fs_empty(&stack))){
 
 	    //Pop current frame
-	    *cur = fs_pop(&stack);
+	    cur = fs_pop(&stack);
 
 	    //If current node is a question:
-	    if(cur->node->isQuestion){
+	    if(cur.node->isQuestion){
 
 		    //Display question and get user's answer (y/n)
 		    clear();
-		    while(userAnswer == 0){
-			    mvprintw(2,2,"%s", cur->node->text);
-			    refresh();
-			    userAnswer = getch();
-			    if(userAnswer != 'y' && userAnswer != 'n'){
-				    userAnswer = 0;
-				    clear();
-				    mvprintw(1,2,"Invalid input, try again...");
-			    }
-		    }
+		    userAnswer = get_yes_no(2,2,cur.node->text);
+
 
 		    //Set parent = current node
-		    parent = cur->node;
+		    parent = cur.node;
 
 		    //Set parentAnswer = answer
-		    parentAnswer = userAnswer;
+		    if(userAnswer == 'y'){
+			    parentAnswer = 1;
+		    }
+		    else{
+			    parentAnswer = 0;
+		    }
 
 		    //Push appropriate child (yes or no) onto stack
-		    if(parentAnswer == 'y'){
+		    if(parentAnswer == 1){
 			    fs_push(&stack, parent->yes, 1);
 		    }
 		    else{
@@ -117,53 +114,35 @@ void play_game() {
 
 		    //Ask "Is it a [animal]?"
 		    clear();
-                    while(userAnswer == 0){
-                            mvprintw(2,2,"Is it a %s? (y/n)", cur->node->text);
-                            refresh();
-                            userAnswer = getch();
-                            if(userAnswer != 'y' && userAnswer != 'n'){
-                                    userAnswer = 0;
-                                    clear();
-                                    mvprintw(1,2,"Invalid input, try again...");
-                            }
-                    }
+		    char* question = "Is it a ";
+		    strcat(question,cur.node->text);
+		    strcat(question,"?");
+		    userAnswer = get_yes_no(2,2,question);
 
 		    //If correct: celebrate and break
 		    if(userAnswer == 'y'){
 			    clear();
 			    mvprintw(2,2,"Yay! I guessed it!");
 			    refresh();
+			    getch();
 			    break;
 		    }
 
 		    //If wrong: LEARNING PHASE
 		    //i. Get correct animal name from user
-		    char correctAnimal[100];
+		    char* correctAnimal;
 		    clear();
-		    mvprintw(2,2,"What animal were you thinking of? ");
-		    refresh();
-		    getstr(correctAnimal);
+		    correctAnimal = get_input(2,2,"What animal were you thinking of?");
 
 		    //ii. Get distinguishing question
-		    char newQuestion[250];
+		    char* newQuestion;
 		    clear();
-		    mvprintw(2,2,"Please enter a distinguishing question: ");
-		    refresh();
-		    getstr(newQuestion);
+		    newQuestion = get_input(2,2,"Please enter a distinguishing question: ");
 
 		    //iii. Get answer for new animal (y/n for the question)
 		    char newAnswer = 0;
 		    clear();
-		    while(newAnswer == 0){
-		    	mvprintw(2,2,"Is your animal the yes or no answer to the question? (y/n) ");
-		    	refresh();
-		    	newAnswer = getch();
-			if(newAnswer != 'y' && newAnswer != 'n'){
-				newAnswer = 0;
-				clear();
-				mvprintw(1,2,"Invalid input, try again...");
-			}
-		    }
+		    newAnswer = get_yes_no(2,2,"Is your animal the yes or no answer to your question? (y/n) ");
 
 		    //iv. Create new question node and new animal node
 		    Node* newAnimalNode = create_animal_node(correctAnimal);
@@ -172,11 +151,11 @@ void play_game() {
 		    //v. Link them: if newAnswer is yes, newQuestion->yes = newAnimal
 		    if(newAnswer == 'y'){
 			    newQuestionNode->yes = newAnimalNode;
-			    newQuestionNode->no = cur->node;
+			    newQuestionNode->no = cur.node;
 		    }
 		    else{
 			    newQuestionNode->no = newAnimalNode;
-			    newQuestionNode->yes = cur->node;
+			    newQuestionNode->yes = cur.node;
 		    }
 
 		    //vi. Update parent pointer (or g_root if parent is NULL)
@@ -191,14 +170,14 @@ void play_game() {
 		    }
 
 		    //vii. Create Edit record and push to g_undo
-		    Edit* newEdit = (Edit*) malloc(sizeof(Edit));
-		    newEdit->type = EDIT_INSERT_SPLIT;
-		    newEdit->parent = parent;
-		    newEdit->wasYesChild = parentAnswer;
-		    newEdit->oldLeaf = cur->node;
-		    newEdit->newQuestion = newQuestionNode;
-		    newEdit->newLeaf = newAnimalNode; 
-		    es_push(&g_undo, *newEdit);
+		    Edit newEdit = {0};
+		    newEdit.type = EDIT_INSERT_SPLIT;
+		    newEdit.parent = parent;
+		    newEdit.wasYesChild = parentAnswer;
+		    newEdit.oldLeaf = cur.node;
+		    newEdit.newQuestion = newQuestionNode;
+		    newEdit.newLeaf = newAnimalNode; 
+		    es_push(&g_undo, newEdit);
 
 		    //viii. Clear g_redo stack
 		    es_clear(&g_redo);
@@ -207,6 +186,13 @@ void play_game() {
 		    char* canoQ = canonicalize(newQuestion);
 		    unsigned animalID = h_hash(correctAnimal);
 		    h_put(&g_index, canoQ, animalID);
+		    free(canoQ);
+
+		    //End round and let user know we've learned
+		    mvprintw(4,2,"Got it! I’ve learned a new animal.");
+                    refresh();
+		    getch(); 
+		    break;
 	    }
     }
     fs_free(&stack);
