@@ -67,6 +67,17 @@ void play_game() {
     
     // TODO: Your implementation here
     //Push root frame with answeredYes = -1
+    if (!g_root) {
+    	clear();
+    	mvprintw(2,2,"I don't know any animals yet. Let's teach me one!");
+    	refresh();
+    	char *first = get_input(4,2,"Enter an animal to start: ");
+    	if (first && *first) {
+        	g_root = create_animal_node(first);
+    	}
+    	free(first);
+    	if (!g_root) return;
+    }
     fs_push(&stack, g_root, -1);
 
     //Set parent = NULL, parentAnswer = -1
@@ -93,7 +104,7 @@ void play_game() {
 		    parent = cur.node;
 
 		    //Set parentAnswer = answer
-		    if(userAnswer == 'y'){
+		    if(userAnswer == 1){
 			    parentAnswer = 1;
 		    }
 		    else{
@@ -119,7 +130,7 @@ void play_game() {
 		    int userAnswer = get_yes_no(2, 2, question);
 
 		    //If correct: celebrate and break
-		    if(userAnswer == 'y'){
+		    if(userAnswer == 1){
 			    clear();
 			    mvprintw(2,2,"Yay! I guessed it!");
 			    refresh();
@@ -131,12 +142,12 @@ void play_game() {
 		    //i. Get correct animal name from user
 		    char* correctAnimal;
 		    clear();
-		    correctAnimal = get_input(2,2,"What animal were you thinking of?");
+		    correctAnimal = (char*) strdup(get_input(2,2,"What animal were you thinking of? "));
 
 		    //ii. Get distinguishing question
 		    char* newQuestion;
 		    clear();
-		    newQuestion = get_input(2,2,"Please enter a distinguishing question: ");
+		    newQuestion = (char*) strdup(get_input(2,2,"Please enter a distinguishing question: "));
 
 		    //iii. Get answer for new animal (y/n for the question)
 		    char newAnswer = 0;
@@ -148,7 +159,7 @@ void play_game() {
 		    Node* newQuestionNode = create_question_node(newQuestion);
 
 		    //v. Link them: if newAnswer is yes, newQuestion->yes = newAnimal
-		    if(newAnswer == 'y'){
+		    if(newAnswer == 1){
 			    newQuestionNode->yes = newAnimalNode;
 			    newQuestionNode->no = cur.node;
 		    }
@@ -191,7 +202,7 @@ void play_game() {
 
 		    //End round and let user know we've learned
 		    clear();
-		    mvprintw(4,2,"Got it! I’ve learned a new animal.");
+		    mvprintw(4,2,"Got it! I have learned a new animal.");
                     refresh();
 		    getch(); 
 		    break;
