@@ -88,8 +88,33 @@ void play_game() {
  * Note: We don't free newQuestion/newLeaf because they might be redone
  */
 int undo_last_edit() {
-    // TODO: Implement this function
-    return 0;
+    //Check if g_undo stack is empty, return 0 if so.
+    if (es_empty(&g_undo)){
+	    return 0;
+    }
+
+    //pop edit from g_undo
+    Edit temp = es_pop(&g_undo);
+
+    //restore the tree structure:
+    //if edit.parent is Null set g_root = edit.oldLeaf
+    if(temp.parent == NULL){
+	    g_root = temp.oldLeaf;
+    }
+
+    //else if edit was yeschild, set edit.parent->yes = edit.oldLeaf
+    else if(temp.wasYesChild){
+	    temp.parent->yes = temp.oldLeaf;
+    }
+
+    //else set edit.parent->no = edit.oldLeaf
+    else{
+	    temp.parent->no = temp.oldLeaf;
+    }
+
+    //push edit to g_redo stack
+    es_push(&g_redo, temp);
+    return 1;
 }
 
 /* TODO 33: Implement redo_last_edit
@@ -109,6 +134,31 @@ int undo_last_edit() {
  * 5. Return 1
  */
 int redo_last_edit() {
-    // TODO: Implement this function
-    return 0;
+    //check if g_redo stack is empty, return 0 if so
+    if(es_empty(&g_redo)){
+	    return 0;
+    }
+
+    //pop edit from g_redo
+    Edit temp = es_pop(&g_redo);
+    
+    //reapply the tree modification:
+    //if edit.parent is NULL set g.root = edit.newQuestion
+    if(temp.parent == NULL){
+	    g.root = temp.newQuestion;
+    }
+
+    //else if edit.wasYesChild set edit.parent->yes = edit.newQuestion
+    else if(temp.wasYesChild){
+	    temp.parent->yes = temp.newQuestion;
+    }
+
+    //else set edit.parent->no = edit.newQuestion
+    else{
+	    temp.parent->no = temp.newQuestion;
+    }
+
+    //push edit back to g_undo stack
+    es_push(&g_undo, temp);
+    return 1;
 }
