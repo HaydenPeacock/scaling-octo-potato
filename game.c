@@ -143,9 +143,9 @@ int redo_last_edit() {
     Edit temp = es_pop(&g_redo);
     
     //reapply the tree modification:
-    //if edit.parent is NULL set g.root = edit.newQuestion
+    //if edit.parent is NULL set g_root = edit.newQuestion
     if(temp.parent == NULL){
-	    g.root = temp.newQuestion;
+	    g_root = temp.newQuestion;
     }
 
     //else if edit.wasYesChild set edit.parent->yes = edit.newQuestion
