@@ -114,10 +114,9 @@ void play_game() {
 
 		    //Ask "Is it a [animal]?"
 		    clear();
-		    char* question = "Is it a ";
-		    strcat(question,cur.node->text);
-		    strcat(question,"?");
-		    userAnswer = get_yes_no(2,2,question);
+		    char question[256];
+		    snprintf(question, sizeof(question), "Is it a %s?", cur.node->text);
+		    int userAnswer = get_yes_no(2, 2, question);
 
 		    //If correct: celebrate and break
 		    if(userAnswer == 'y'){
@@ -142,7 +141,7 @@ void play_game() {
 		    //iii. Get answer for new animal (y/n for the question)
 		    char newAnswer = 0;
 		    clear();
-		    newAnswer = get_yes_no(2,2,"Is your animal the yes or no answer to your question? (y/n) ");
+		    newAnswer = get_yes_no(2,2,"For your question, would your animal be the yes answer? (y/n) ");
 
 		    //iv. Create new question node and new animal node
 		    Node* newAnimalNode = create_animal_node(correctAnimal);
@@ -187,8 +186,11 @@ void play_game() {
 		    unsigned animalID = h_hash(correctAnimal);
 		    h_put(&g_index, canoQ, animalID);
 		    free(canoQ);
+		    free(newQuestion);
+		    free(correctAnimal);
 
 		    //End round and let user know we've learned
+		    clear();
 		    mvprintw(4,2,"Got it! I’ve learned a new animal.");
                     refresh();
 		    getch(); 
