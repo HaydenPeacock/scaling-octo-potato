@@ -45,6 +45,7 @@ extern Hash g_index;
  * 6. Free stack
  */
 void play_game() {
+	//Initialize and display game UI
     clear();
     attron(COLOR_PAIR(5) | A_BOLD);
     mvprintw(0, 0, "%-80s", " Playing 20 Questions");
@@ -65,7 +66,149 @@ void play_game() {
     fs_init(&stack);
     
     // TODO: Your implementation here
-    
+    //Push root frame with answeredYes = -1
+    fs_push(&stack, g_root, -1);
+
+    //Set parent = NULL, parentAnswer = -1
+    Node* parent = NULL;
+    int parentAnswer = -1;
+
+    //While stack not empty:
+    int userAnswer = 0;
+    Frame* cur;
+    while(!(fs_empty(&stack))){
+
+	    //Pop current frame
+	    *cur = fs_pop(&stack);
+
+	    //If current node is a question:
+	    if(cur->node->isQuestion){
+
+		    //Display question and get user's answer (y/n)
+		    clear();
+		    while(userAnswer == 0){
+			    mvprintw(2,2,"%s", cur->node->text);
+			    refresh();
+			    userAnswer = getch();
+			    if(userAnswer != 'y' && userAnswer != 'n'){
+				    userAnswer = 0;
+				    clear();
+				    mvprintw(1,2,"Invalid input, try again...");
+			    }
+		    }
+
+		    //Set parent = current node
+		    parent = cur->node;
+
+		    //Set parentAnswer = answer
+		    parentAnswer = userAnswer;
+
+		    //Push appropriate child (yes or no) onto stack
+		    if(parentAnswer == 'y'){
+			    fs_push(&stack, parent->yes, 1);
+		    }
+		    else{
+			    fs_push(&stack, parent->no, 0);
+		    }
+	    }
+
+	    //If current node is a leaf (animal):
+	    else{
+
+		    //Ask "Is it a [animal]?"
+		    clear();
+                    while(userAnswer == 0){
+                            mvprintw(2,2,"Is it a %s? (y/n)", cur->node->text);
+                            refresh();
+                            userAnswer = getch();
+                            if(userAnswer != 'y' && userAnswer != 'n'){
+                                    userAnswer = 0;
+                                    clear();
+                                    mvprintw(1,2,"Invalid input, try again...");
+                            }
+                    }
+
+		    //If correct: celebrate and break
+		    if(userAnswer == 'y'){
+			    clear();
+			    mvprintw(2,2,"Yay! I guessed it!");
+			    refresh();
+			    break;
+		    }
+
+		    //If wrong: LEARNING PHASE
+		    //i. Get correct animal name from user
+		    char correctAnimal[100];
+		    clear();
+		    mvprintw(2,2,"What animal were you thinking of? ");
+		    refresh();
+		    getstr(correctAnimal);
+
+		    //ii. Get distinguishing question
+		    char newQuestion[250];
+		    clear();
+		    mvprintw(2,2,"Please enter a distinguishing question: ");
+		    refresh();
+		    getstr(newQuestion);
+
+		    //iii. Get answer for new animal (y/n for the question)
+		    char newAnswer = 0;
+		    clear();
+		    while(newAnswer == 0){
+		    	mvprintw(2,2,"Is your animal the yes or no answer to the question? (y/n) ");
+		    	refresh();
+		    	newAnswer = getch();
+			if(newAnswer != 'y' && newAnswer != 'n'){
+				newAnswer = 0;
+				clear();
+				mvprintw(1,2,"Invalid input, try again...");
+			}
+		    }
+
+		    //iv. Create new question node and new animal node
+		    Node* newAnimalNode = create_animal_node(correctAnimal);
+		    Node* newQuestionNode = create_question_node(newQuestion);
+
+		    //v. Link them: if newAnswer is yes, newQuestion->yes = newAnimal
+		    if(newAnswer == 'y'){
+			    newQuestionNode->yes = newAnimalNode;
+			    newQuestionNode->no = cur->node;
+		    }
+		    else{
+			    newQuestionNode->no = newAnimalNode;
+			    newQuestionNode->yes = cur->node;
+		    }
+
+		    //vi. Update parent pointer (or g_root if parent is NULL)
+		    if(parent == NULL){
+			    g_root = newQuestionNode;
+		    }
+		    else if(parentAnswer == 1){
+			    parent->yes = newQuestionNode;
+		    }
+		    else{
+			    parent->no = newQuestionNode;
+		    }
+
+		    //vii. Create Edit record and push to g_undo
+		    Edit* newEdit = (Edit*) malloc(sizeof(Edit));
+		    newEdit->type = EDIT_INSERT_SPLIT;
+		    newEdit->parent = parent;
+		    newEdit->wasYesChild = parentAnswer;
+		    newEdit->oldLeaf = cur->node;
+		    newEdit->newQuestion = newQuestionNode;
+		    newEdit->newLeaf = newAnimalNode; 
+		    es_push(&g_undo, *newEdit);
+
+		    //viii. Clear g_redo stack
+		    es_clear(&g_redo);
+
+		    //ix. Update g_index with canonicalized question
+		    char* canoQ = canonicalize(newQuestion);
+		    unsigned animalID = h_hash(correctAnimal);
+		    h_put(&g_index, canoQ, animalID);
+	    }
+    }
     fs_free(&stack);
 }
 
