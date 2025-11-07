@@ -108,8 +108,16 @@ int save_tree(const char *filename) {
 		    if(temp->no != NULL){
 			q_enqueue(&q_tree, temp->no, mapCount);
 			if(mapCount >= mapSize){
-				nodeMap = (NodeMapping*) realloc(nodeMap, mapSize*2*sizeof(NodeMapping));
-				mapSize *= 2;
+				int newCap = mapSize * 2;
+				NodeMapping *tmp = realloc(nodeMap, newCap * sizeof(NodeMapping));
+				if(!tmp){
+					q_free(&q_tree);
+					free(nodeMap);
+					fclose(fptr);
+					return 0;
+				}
+				nodeMap = tmp;
+				mapSize = newCap;
 			}
 			nodeMap[mapCount].node = temp->no;
 			nodeMap[mapCount].id = mapCount;
@@ -146,8 +154,8 @@ int save_tree(const char *filename) {
 			return 0;
 		}
 		if(textLen > 0){
-			if(fwrite(temp->text, 1, textLen, fptr) != 1){
-				q_free(&q_free);
+			if(fwrite(temp->text, 1, textLen, fptr) != textLen){
+				q_free(&q_tree);
 				free(nodeMap);
 				fclose(fptr);
 				return 0;
@@ -277,17 +285,26 @@ int load_tree(const char *filename) {
 	    //Allocate and read text string (add null terminator!)
 	    char* text = NULL;
 	    text = (char*) malloc(length + 1);
-	    if(fread(text, 1, length, fptr) != (size_t) length)
+	    if(!text)
 		    goto load_error;
+
+	    if(fread(text, 1, length, fptr) != (size_t) length){
+		    free(text);
+		    goto load_error;
+	    }
 	    text[length] = '\0';
 
 	    //Read yesId, noId
 	    int32_t yesId;
 	    int32_t noId;
-	    if(fread(&yesId, sizeof(int32_t), 1, fptr) != 1)
+	    if(fread(&yesId, sizeof(int32_t), 1, fptr) != 1){
+		    free(text);
 		    goto load_error;
-	    if(fread(&noId, sizeof(int32_t), 1, fptr) != 1)
+	    }
+	    if(fread(&noId, sizeof(int32_t), 1, fptr) != 1){
+		    free(text);
 		    goto load_error;
+    	    }
 
 	    //Validate IDs are in range [-1, count)
 	    if(yesId < -1 || yesId >= nodeCount){
@@ -309,6 +326,7 @@ int load_tree(const char *filename) {
 	    nodes[i] = n;
 	    yesIds[i] = yesId;
 	    noIds[i] = noId;
+	    free(text);
     }
 
     //5. Link nodes using stored IDs:
