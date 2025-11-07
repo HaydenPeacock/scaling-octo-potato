@@ -57,18 +57,18 @@ int save_tree(const char *filename) {
     //2. Open file for writing binary ("wb")
     FILE *fptr;
     fptr = fopen(filename, "wb");
-    if(fptr = NULL) return 0;
+    if(fptr == NULL) return 0;
 
     //3. Initialize queue and NodeMapping array
-    Queue* q_tree;
-    q_init(q_tree);
+    Queue q_tree;
+    q_init(&q_tree);
     NodeMapping* nodeMap = NULL;
     int mapCount = 0;
     int mapSize = 0;
     
     //4. Use BFS to assign IDs to all nodes:
     //Enqueue root with id=0
-    q_enqueue(q_tree, g_root, 0);
+    q_enqueue(&q_tree, g_root, 0);
 
     //Store mapping[0] = {g_root, 0}
     nodeMap = (NodeMapping*) malloc(2 * sizeof(NodeMapping));
@@ -78,18 +78,26 @@ int save_tree(const char *filename) {
     mapSize = 2;
 
     //While queue not empty:
-    while(!(q_empty(q_tree))){
+    while(!(q_empty(&q_tree))){
 		    //Dequeue node and id
 		    Node* temp;
 		    int id;
-		    q_dequeue(q_tree, &temp, &id);
+		    q_dequeue(&q_tree, &temp, &id);
 
 		    //If node has yes child: add to mappings, enqueue with new id
 		    if(temp->yes != NULL){
-	    		q_enqueue(q_tree, temp->yes, mapCount);
+	    		q_enqueue(&q_tree, temp->yes, mapCount);
 			if(mapCount >= mapSize){
-				nodeMap = (NodeMapping*) realloc(nodeMap, mapSize*2*sizeof(NodeMapping));
-				mapSize *= 2;
+				int newCap = mapSize * 2;
+				NodeMapping *tmp = realloc(nodeMap, newCap * sizeof(NodeMapping));
+				if (!tmp) {
+    					q_free(&q_tree);
+    					free(nodeMap);
+    					fclose(fptr);
+    					return 0;
+				}
+				nodeMap = tmp;
+				mapSize = newCap;
 			}
 			nodeMap[mapCount].node = temp->yes;
 			nodeMap[mapCount].id = mapCount;
@@ -98,7 +106,7 @@ int save_tree(const char *filename) {
 
 		    //If node has no child: add to mappings, enqueue with new id
 		    if(temp->no != NULL){
-			q_enqueue(q_tree, temp->no, mapCount);
+			q_enqueue(&q_tree, temp->no, mapCount);
 			if(mapCount >= mapSize){
 				nodeMap = (NodeMapping*) realloc(nodeMap, mapSize*2*sizeof(NodeMapping));
 				mapSize *= 2;
@@ -125,12 +133,25 @@ int save_tree(const char *filename) {
 		//Write isQuestion, textLen, text bytes
 		uint8_t isQuestion = temp->isQuestion;
 		uint32_t textLen = strlen(temp->text);
-		fwrite(&isQuestion, sizeof(uint8_t), 1, fptr);
-		fwrite(&textLen, sizeof(uint32_t), 1, fptr);
-		int length = strlen(temp->text);
-		for(int j = 0; j < length; j++){
-			uint8_t sym = (uint8_t) temp->text[j];
-			fwrite(&sym, sizeof(uint8_t), 1, fptr);
+		if(fwrite(&isQuestion, sizeof(uint8_t), 1, fptr) != 1){
+			q_free(&q_tree);
+			free(nodeMap);
+			fclose(fptr);
+			return 0;
+		}
+		if(fwrite(&textLen, sizeof(uint32_t), 1, fptr) != 1){
+			q_free(&q_tree);
+			free(nodeMap);
+			fclose(fptr);
+			return 0;
+		}
+		if(textLen > 0){
+			if(fwrite(temp->text, 1, textLen, fptr) != 1){
+				q_free(&q_free);
+				free(nodeMap);
+				fclose(fptr);
+				return 0;
+			}
 		}
 
 		//Find yes child's id in mappings (or -1)
@@ -138,6 +159,7 @@ int save_tree(const char *filename) {
 		for(int j = 0; j < mapCount; j++){
 			if(temp->yes == nodeMap[j].node){
 				yesId = (int32_t) j;
+				break;
 			}
 		}
 
@@ -146,16 +168,21 @@ int save_tree(const char *filename) {
                 for(int j = 0; j < mapCount; j++){
                         if(temp->no == nodeMap[j].node){
                                 noId = (int32_t) j;
+				break;
                         }
                 }
 
 		//Write yesId, noId
-		fwrite(&yesId, sizeof(int32_t), 1, fptr);
-		fwrite(&noId, sizeof(int32_t), 1, fptr);
+		if(fwrite(&yesId, sizeof(int32_t), 1, fptr) != 1 || fwrite(&noId, sizeof(int32_t), 1, fptr) != 1){
+			q_free(&q_tree);
+			free(nodeMap);
+			fclose(fptr);
+			return 0;
+		}
 	}
 
 	//Clean up and return 1 on success
-	q_free(q_tree);
+	q_free(&q_tree);
 	free(nodeMap);
 	fclose(fptr);
 
@@ -199,7 +226,7 @@ int load_tree(const char *filename) {
     //Open file for reading binary ("rb")
     FILE* fptr;
     fptr = fopen(filename, "rb");
-    if(!fptr) return 0;
+    if(fptr == NULL) return 0;
 
     //Read and validate header (magic, version, count)
     uint32_t magic;
@@ -226,6 +253,10 @@ int load_tree(const char *filename) {
 
     //int32_t *noIds = calloc(count, sizeof(int32_t))
     int32_t *noIds = calloc(nodeCount, sizeof(int32_t));
+
+    if(!nodes || !yesIds || !noIds){
+	    goto load_error;
+    }
 
     //Read each node:
     for(int i = 0; i < nodeCount; i++){
@@ -295,7 +326,7 @@ int load_tree(const char *filename) {
 
     //Free old g_root if not NULL
     if(g_root != NULL){
-	    free(g_root);
+	    free_tree(g_root);
     }
 
     //7. Set g_root = nodes[0]
