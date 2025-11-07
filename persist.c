@@ -326,7 +326,6 @@ int load_tree(const char *filename) {
 	    nodes[i] = n;
 	    yesIds[i] = yesId;
 	    noIds[i] = noId;
-	    free(text);
     }
 
     //5. Link nodes using stored IDs:
