@@ -30,7 +30,56 @@ extern Node *g_root;
 int check_integrity() {
     // TODO: Implement this function
     // Use the Queue functions you implemented
-    return 1;
+    //1. Return 1 if g_root is NULL (empty tree is valid)
+    if(g_root == NULL)
+	    return 1;
+
+    //2. Initialize queue and enqueue root with id=0
+    Queue q;
+    q_init(&q);
+    q_enqueue(&q, g_root, 0);
+    int curId = 1;
+
+    //3. Set valid = 1
+    int valid = 1;
+
+    //4. While queue not empty:
+    while(!q_empty(&q)){
+	    //Dequeue node
+	    Node* temp;
+	    int id;
+	    q_dequeue(&q, &temp, &id);
+
+	    //If node->isQuestion:
+	    if(temp->isQuestion){
+		    //Check if yes == NULL or no == NULL
+		    if(temp->yes == NULL || temp->no == NULL){
+			    //If so, set valid = 0 and break
+			    valid = 0;
+			    break;
+		    }
+
+		    //Otherwise, enqueue both children
+		    q_enqueue(&q, temp->yes, curId);
+		    curId++;
+		    q_enqueue(&q, temp->no, curId);
+		    curId++;
+	    }
+
+	    //Else (leaf node):
+	    else{
+		    //Check if yes != NULL or no != NULL
+		    if(temp->yes != NULL || temp->no != NULL){
+			    //If so, set valid = 0 and break
+			    valid = 0;
+			    break;
+		    }
+	    }
+    }
+
+    //5. Free queue and return valid
+    q_free(&q);
+    return valid;
 }
 
 typedef struct PathNode {
